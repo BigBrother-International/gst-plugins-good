@@ -50,6 +50,7 @@ typedef struct _GstMatroskaReadCommon {
 
   /* pads */
   GstPad                  *sinkpad;
+  GstPad                  *srcpad;
   GPtrArray               *src;
   guint                    num_streams;
 

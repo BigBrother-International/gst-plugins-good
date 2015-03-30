@@ -95,6 +95,12 @@ static GstStaticPadTemplate sink_templ = GST_STATIC_PAD_TEMPLATE ("sink",
         "video/x-matroska-3d; audio/webm; video/webm")
     );
 
+static GstStaticPadTemplate src_templ = GST_STATIC_PAD_TEMPLATE ("src",
+    GST_PAD_SRC,
+    GST_PAD_ALWAYS,
+    GST_STATIC_CAPS ("ANY")
+    );
+
 /* TODO: fill in caps! */
 
 static GstStaticPadTemplate audio_src_templ =
@@ -235,6 +241,8 @@ gst_matroska_demux_class_init (GstMatroskaDemuxClass * klass)
       gst_static_pad_template_get (&subtitle_src_templ));
   gst_element_class_add_pad_template (gstelement_class,
       gst_static_pad_template_get (&sink_templ));
+  gst_element_class_add_pad_template (gstelement_class,
+      gst_static_pad_template_get (&src_templ));
 
   gst_element_class_set_static_metadata (gstelement_class, "Matroska demuxer",
       "Codec/Demuxer",
@@ -247,6 +255,9 @@ gst_matroska_demux_init (GstMatroskaDemux * demux)
 {
   demux->common.sinkpad = gst_pad_new_from_static_template (&sink_templ,
       "sink");
+  demux->common.srcpad = gst_pad_new_from_static_template (&src_templ,
+      "src");
+
   gst_pad_set_activate_function (demux->common.sinkpad,
       GST_DEBUG_FUNCPTR (gst_matroska_demux_sink_activate));
   gst_pad_set_activatemode_function (demux->common.sinkpad,
@@ -256,6 +267,7 @@ gst_matroska_demux_init (GstMatroskaDemux * demux)
   gst_pad_set_event_function (demux->common.sinkpad,
       GST_DEBUG_FUNCPTR (gst_matroska_demux_handle_sink_event));
   gst_element_add_pad (GST_ELEMENT (demux), demux->common.sinkpad);
+  gst_element_add_pad (GST_ELEMENT (demux), demux->common.srcpad);
 
   /* init defaults for common read context */
   gst_matroska_read_common_init (&demux->common);
@@ -1191,8 +1203,13 @@ gst_matroska_demux_add_stream (GstMatroskaDemux * demux, GstEbmlRead * ebml)
         context->stream_headers, caps);
   }
 
-  /* the pad in here */
-  context->pad = gst_pad_new_from_template (templ, padname);
+  /* use existing static src pad if this is the first stream */
+  if(demux->num_a_streams <= 1) {
+    context->pad = demux->common.srcpad;
+  } else {
+    context->pad = gst_pad_new_from_template (templ, padname);
+  }
+
   context->caps = caps;
 
   gst_pad_set_event_function (context->pad,
@@ -1240,7 +1257,11 @@ gst_matroska_demux_add_stream (GstMatroskaDemux * demux, GstEbmlRead * ebml)
   gst_pad_push_event (context->pad, stream_start);
   gst_pad_set_caps (context->pad, context->caps);
 
-  gst_element_add_pad (GST_ELEMENT (demux), context->pad);
+  /* only add new pad if this is not the first stream */
+  if(demux->num_a_streams > 1) {
+    gst_element_add_pad (GST_ELEMENT (demux), context->pad);
+  }
+
   gst_flow_combiner_add_pad (demux->flowcombiner, context->pad);
 
   g_free (padname);
