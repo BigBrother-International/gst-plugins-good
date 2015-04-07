@@ -2867,6 +2867,7 @@ gst_matroska_read_common_reset (GstElement * element,
     GstMatroskaReadCommon * ctx)
 {
   guint i;
+  guint last_index;
 
   GST_LOG_OBJECT (ctx->sinkpad, "resetting read context");
 
@@ -2875,14 +2876,20 @@ gst_matroska_read_common_reset (GstElement * element,
 
   /* clean up existing streams if any */
   if (ctx->src) {
+    last_index = (ctx->src->len - 1);
     g_assert (ctx->src->len == ctx->num_streams);
     for (i = 0; i < ctx->src->len; i++) {
       GstMatroskaTrackContext *context = g_ptr_array_index (ctx->src, i);
+      if (context->pad != NULL) {
+        /* do not remove last pad */
+        if(i != last_index) {
+          gst_element_remove_pad (element, context->pad);
+        }
+      }
 
-      if (context->pad != NULL)
-        gst_element_remove_pad (element, context->pad);
-
-      gst_caps_replace (&context->caps, NULL);
+      if(i != last_index) {
+        gst_caps_replace (&context->caps, NULL);
+      }
       gst_matroska_track_free (context);
     }
     g_ptr_array_free (ctx->src, TRUE);
