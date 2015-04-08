@@ -549,6 +549,13 @@ gst_v4l2_buffer_pool_set_config (GstBufferPool * bpool, GstStructure * config)
     GST_INFO_OBJECT (pool, "increasing minimum buffers to %u", min_buffers);
   }
 
+  /* respect driver requirements */
+  if (min_buffers < obj->min_buffers) {
+    updated = TRUE;
+    min_buffers = obj->min_buffers;
+    GST_INFO_OBJECT (pool, "increasing minimum buffers to %u", min_buffers);
+  }
+
   if (max_buffers > VIDEO_MAX_FRAME || max_buffers == 0) {
     updated = TRUE;
     max_buffers = VIDEO_MAX_FRAME;
@@ -1240,6 +1247,8 @@ gst_v4l2_buffer_pool_dqbuf (GstV4l2BufferPool * pool, GstBuffer ** buffer)
     GST_BUFFER_FLAG_SET (outbuf, GST_BUFFER_FLAG_CORRUPTED);
 
   GST_BUFFER_TIMESTAMP (outbuf) = timestamp;
+  GST_BUFFER_OFFSET (outbuf) = group->buffer.sequence;
+  GST_BUFFER_OFFSET_END (outbuf) = group->buffer.sequence + 1;
 
 done:
   *buffer = outbuf;
