@@ -1,4 +1,8 @@
-GStreamer 1.5.x development series
+GStreamer 1.5.x development series (BigBrother International Fork)
+
+CHANGES MADE BY BIGBROTHER
+---------
+- gave the `matroskademux` element a static `src` pad
 
 WHAT IT IS
 ----------
